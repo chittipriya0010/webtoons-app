@@ -1,36 +1,93 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import styles from './login.module.css';
+import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('alex@example.com');
-    const [password, setPassword] = useState('password123');
-    const [result, setResult] = useState('');
+    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const registered = searchParams.get('registered');
 
-    const handleLogin = async () => {
+    // then in JSX, below the error div:
+    {
+        registered && (
+            <div className={styles.success}>
+                Account created! Sign in below.
+            </div>
+        )
+    }
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
         const res = await signIn('credentials', {
             email,
             password,
             redirect: false,
         });
-        setResult(JSON.stringify(res, null, 2));
+
+        setLoading(false);
+
+        if (res?.ok) {
+            router.push('/');
+        } else {
+            setError('Invalid email or password. Please try again.');
+        }
     };
 
     return (
-        <div style={{ padding: 40 }}>
-            <h1>Test Login</h1>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-            <br />
-            <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="password"
-                type="password"
-            />
-            <br />
-            <button onClick={handleLogin}>Login</button>
-            <pre>{result}</pre>
+        <div className={styles.page}>
+            <div className={styles.card}>
+                <a href="/" className={styles.logo}>WEBTOONS</a>
+                <h1 className={styles.title}>Welcome back</h1>
+                <p className={styles.subtitle}>Sign in to continue reading</p>
+
+                {error && <div className={styles.error}>{error}</div>}
+
+                <form className={styles.form} onSubmit={handleLogin}>
+                    <div className={styles.field}>
+                        <label className={styles.label}>Email</label>
+                        <input
+                            className={styles.input}
+                            type="email"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className={styles.field}>
+                        <label className={styles.label}>Password</label>
+                        <input
+                            className={styles.input}
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <button className={styles.btn} type="submit" disabled={loading}>
+                        {loading ? 'Signing in...' : 'Sign In'}
+                    </button>
+                </form>
+
+                <p className={styles.footer}>
+                    Don&apos;t have an account?{' '}
+                    <a href="/signup" className={styles.link}>Create one</a>
+                </p>
+            </div>
         </div>
     );
 }

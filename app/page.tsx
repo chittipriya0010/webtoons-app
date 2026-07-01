@@ -1,65 +1,166 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import type { Series, Genre } from '@/types';
+import styles from './homepage.module.css';
+
+const STATUS_STYLES: Record<string, string> = {
+  ongoing: styles.statusOngoing,
+  completed: styles.statusCompleted,
+  hiatus: styles.statusHiatus,
+};
+
+export default function HomePage() {
+  const [series, setSeries] = useState<Series[]>([]);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [activeGenre, setActiveGenre] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/genres')
+      .then((r) => r.json())
+      .then((d) => setGenres(d.data || []));
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (activeGenre) params.set('genre', activeGenre);
+    if (activeStatus) params.set('status', activeStatus);
+
+    fetch(`/api/series?${params.toString()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setSeries(d.data || []);
+        setLoading(false);
+      });
+  }, [activeGenre, activeStatus]);
+
+  const featured = series[0];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <>
+      {/* NAV */}
+      <nav className={styles.nav}>
+        <span className={styles.navLogo}>WEBTOONS</span>
+        <ul className={styles.navLinks}>
+          <li><a href="#">Browse</a></li>
+          <li><a href="/library">My Library</a></li>
+          <li><a href="/login">Login</a></li>
+        </ul>
+      </nav>
+
+      {/* HERO */}
+      {featured && (
+        <section className={styles.hero}>
+          <div
+            className={styles.heroBg}
+            style={{ backgroundImage: `url(${featured.cover_image_url})` }}
+          />
+          <div className={styles.heroGradient} />
+          <div className={styles.heroContent}>
+            <span className={styles.heroTag}>Featured Series</span>
+            <h1 className={styles.heroTitle}>
+              <span className={styles.heroTitleUnderline}>{featured.title}</span>
+            </h1>
+            <p className={styles.heroSynopsis}>{featured.synopsis}</p>
+            <div className={styles.heroMeta}>
+              <span className={styles.heroRating}>★ {featured.rating_avg}</span>
+              <span>by {featured.creator_name}</span>
+              <span>{featured.view_count.toLocaleString()} views</span>
+            </div>
+            <a href={`/series/${featured.slug}`} className={styles.heroBtn}>
+              Start Reading →
+            </a>
+          </div>
+        </section>
+      )}
+
+      {/* FILTERS */}
+      <section className={styles.filtersSection}>
+        <div className={styles.filtersRow}>
+          <span className={styles.filterLabel}>Genre</span>
+          <button
+            className={`${styles.pill} ${!activeGenre ? styles.pillActive : ''}`}
+            onClick={() => setActiveGenre(null)}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            All
+          </button>
+          {genres.map((g) => (
+            <button
+              key={g.id}
+              className={`${styles.pill} ${activeGenre === g.name ? styles.pillActive : ''}`}
+              onClick={() => setActiveGenre(activeGenre === g.name ? null : g.name)}
+            >
+              {g.name}
+            </button>
+          ))}
         </div>
-      </main>
-    </div>
+
+        <div className={styles.filtersRow}>
+          <span className={styles.filterLabel}>Status</span>
+          {['ongoing', 'completed', 'hiatus'].map((s) => (
+            <button
+              key={s}
+              className={`${styles.pill} ${activeStatus === s ? styles.pillActive : ''}`}
+              onClick={() => setActiveStatus(activeStatus === s ? null : s)}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className={styles.divider} />
+
+      {/* CATALOG */}
+      <section className={styles.catalogSection}>
+        <div className={styles.catalogHeader}>
+          <h2 className={styles.catalogTitle}>
+            {activeGenre ? activeGenre : 'All Series'}
+          </h2>
+          {!loading && (
+            <span className={styles.catalogCount}>{series.length} titles</span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className={styles.grid}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={styles.skeleton} />
+            ))}
+          </div>
+        ) : series.length === 0 ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>No series found</p>
+            <p>Try a different genre or status filter.</p>
+          </div>
+        ) : (
+          <div className={styles.grid}>
+            {series.map((s) => (
+              <a key={s.id} href={`/series/${s.slug}`} className={styles.card}>
+                <img
+                  className={styles.cardCover}
+                  src={s.cover_image_url || 'https://picsum.photos/seed/placeholder/400/600'}
+                  alt={s.title}
+                  loading="lazy"
+                />
+                <div className={styles.cardBody}>
+                  <p className={styles.cardTitle}>{s.title}</p>
+                  <p className={styles.cardCreator}>by {s.creator_name}</p>
+                  <div className={styles.cardFooter}>
+                    <span className={styles.cardRating}>★ {s.rating_avg}</span>
+                    <span className={`${styles.cardStatus} ${STATUS_STYLES[s.status] || ''}`}>
+                      {s.status}
+                    </span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
